@@ -1,0 +1,9 @@
+# Ignore the specific folder
+docs/
+
+# Ignore all markdown files
+*.md
+
+# But don't ignore README files
+!README.md
+!CHANGELOG.md
