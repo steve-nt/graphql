@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Zone01 student profile built with GraphQL and SVG charts.">
+  <title>Zone01 Profile</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232a78d6'/%3E%3Cpath d='M9 22l5-7 4 4 5-8' stroke='white' stroke-width='3' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      const theme = localStorage.getItem("theme");
+      if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+    } catch {}
+  </script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="topbar" id="topbar" hidden>
+    <div class="topbar-inner">
+      <span class="brand" aria-hidden="true">01</span>
+      <nav class="tabs" aria-label="Pages">
+        <a href="#profile" class="tab" data-tab="profile">Profile</a>
+        <a href="#graphiql" class="tab" data-tab="graphiql">GraphiQL</a>
+      </nav>
+      <div class="topbar-actions">
+        <button type="button" class="icon-button" id="theme-toggle" aria-label="Switch colour theme" title="Switch colour theme">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+        </button>
+        <button type="button" class="button ghost" id="logout-button">Log out</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <!-- Login -->
+    <section id="login-view" class="login-view" hidden aria-labelledby="login-title">
+      <form id="login-form" class="card login-card" novalidate>
+        <span class="brand brand-lg" aria-hidden="true">01</span>
+        <h1 id="login-title">Sign in</h1>
+        <p class="muted">Use your Zone01 username or email.</p>
+
+        <label for="identifier">Username or email</label>
+        <input id="identifier" name="identifier" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required>
+
+        <label for="password">Password</label>
+        <div class="password-field">
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button type="button" class="link-button" id="toggle-password" aria-controls="password" aria-pressed="false">Show</button>
+        </div>
+
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+
+        <button type="submit" class="button primary" id="login-button">Sign in</button>
+      </form>
+    </section>
+
+    <!-- Profile -->
+    <section id="profile-view" class="page" hidden aria-labelledby="profile-title">
+      <div id="profile-status" class="status" role="status"></div>
+
+      <div id="profile-content" hidden>
+        <h1 id="profile-title" class="page-title">Hello, <span data-field="displayName"></span></h1>
+        <p class="muted page-subtitle"><span data-field="login"></span> · <span data-field="campus"></span></p>
+
+        <!-- Three main sections -->
+        <div class="grid grid-3">
+          <section class="card" aria-labelledby="identity-title">
+            <h2 id="identity-title">Identity</h2>
+            <dl class="facts">
+              <div><dt>Login</dt><dd data-field="login"></dd></div>
+              <div><dt>Full name</dt><dd data-field="fullName"></dd></div>
+              <div><dt>Email</dt><dd data-field="email"></dd></div>
+              <div><dt>User ID</dt><dd data-field="id"></dd></div>
+              <div><dt>Campus</dt><dd data-field="campus"></dd></div>
+              <div><dt>Member since</dt><dd data-field="createdAt"></dd></div>
+            </dl>
+          </section>
+
+          <section class="card" aria-labelledby="xp-title">
+            <h2 id="xp-title">XP and level</h2>
+            <div class="hero-pair">
+              <div>
+                <p class="hero-number" data-field="level"></p>
+                <p class="hero-label">Level</p>
+              </div>
+              <div>
+                <p class="hero-number" data-field="totalXp"></p>
+                <p class="hero-label">Total XP</p>
+              </div>
+            </div>
+            <dl class="facts">
+              <div><dt>Projects passed</dt><dd data-field="projectsPassed"></dd></div>
+              <div><dt>Last XP</dt><dd data-field="lastXp"></dd></div>
+            </dl>
+          </section>
+
+          <section class="card" aria-labelledby="audit-title">
+            <h2 id="audit-title">Audits</h2>
+            <div class="hero-pair">
+              <div>
+                <p class="hero-number" data-field="auditRatio"></p>
+                <p class="hero-label">Audit ratio</p>
+              </div>
+              <div>
+                <p class="hero-number" data-field="auditsDone"></p>
+                <p class="hero-label">Audits done</p>
+              </div>
+            </div>
+            <dl class="facts">
+              <div><dt>Done (up)</dt><dd data-field="totalUp"></dd></div>
+              <div><dt>Received (down)</dt><dd data-field="totalDown"></dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <!-- Extra information -->
+        <div class="grid grid-2">
+          <section class="card" aria-labelledby="recent-title">
+            <h2 id="recent-title">Recent projects</h2>
+            <ul id="recent-projects" class="item-list"></ul>
+          </section>
+          <section class="card" aria-labelledby="audits-list-title">
+            <h2 id="audits-list-title">Recent audits you did</h2>
+            <ul id="recent-audits" class="item-list"></ul>
+          </section>
+        </div>
+
+        <!-- Statistics -->
+        <section class="stats" aria-labelledby="stats-title">
+          <h2 id="stats-title" class="section-title">Statistics</h2>
+
+          <div class="grid grid-2">
+            <figure class="card chart-card chart-wide">
+              <figcaption>
+                <h3>XP over time</h3>
+                <p class="muted">Running total of XP. Hover or use the arrow keys to see each gain.</p>
+              </figcaption>
+              <div class="chart" id="chart-xp-time"></div>
+              <details class="data-table"><summary>Show data table</summary><div id="table-xp-time"></div></details>
+            </figure>
+
+            <figure class="card chart-card">
+              <figcaption>
+                <h3>XP by project</h3>
+                <p class="muted">Top 12 projects by XP earned.</p>
+              </figcaption>
+              <div class="chart" id="chart-xp-project"></div>
+              <details class="data-table"><summary>Show data table</summary><div id="table-xp-project"></div></details>
+            </figure>
+
+            <figure class="card chart-card">
+              <figcaption>
+                <h3>Skills</h3>
+                <p class="muted">Highest score reached in each skill.</p>
+              </figcaption>
+              <div class="chart" id="chart-skills"></div>
+              <details class="data-table"><summary>Show data table</summary><div id="table-skills"></div></details>
+            </figure>
+
+            <figure class="card chart-card">
+              <figcaption>
+                <h3>Audit ratio</h3>
+                <p class="muted">XP from audits you did compared with audits you received.</p>
+              </figcaption>
+              <div class="chart" id="chart-audit"></div>
+              <p class="chart-note" id="audit-note"></p>
+            </figure>
+
+            <figure class="card chart-card">
+              <figcaption>
+                <h3>Project results</h3>
+                <p class="muted">Finished project attempts that passed or failed.</p>
+              </figcaption>
+              <div class="chart" id="chart-pass-fail"></div>
+              <ul class="legend" id="legend-pass-fail"></ul>
+            </figure>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- GraphiQL -->
+    <section id="graphiql-view" class="page" hidden aria-labelledby="graphiql-title">
+      <h1 id="graphiql-title" class="page-title">GraphiQL</h1>
+      <p class="muted page-subtitle">Run your own queries against the platform with your session token.</p>
+
+      <div class="graphiql">
+        <div class="card gql-editor">
+          <div class="gql-toolbar">
+            <label for="gql-example" class="visually-hidden">Example query</label>
+            <select id="gql-example"></select>
+            <button type="button" class="button primary" id="gql-run">Run <kbd>Ctrl</kbd>+<kbd>Enter</kbd></button>
+          </div>
+          <label for="gql-query">Query</label>
+          <textarea id="gql-query" spellcheck="false" rows="14"></textarea>
+          <label for="gql-variables">Variables (JSON)</label>
+          <textarea id="gql-variables" spellcheck="false" rows="4">{}</textarea>
+        </div>
+
+        <div class="card gql-result">
+          <div class="gql-result-head">
+            <h2>Result</h2>
+            <span id="gql-meta" class="muted"></span>
+          </div>
+          <pre id="gql-output" tabindex="0" aria-live="polite">Run a query to see the result.</pre>
+        </div>
+
+        <div class="card gql-schema">
+          <div class="gql-result-head">
+            <h2>Schema</h2>
+            <button type="button" class="button ghost" id="gql-schema-load">Load schema</button>
+          </div>
+          <label for="gql-schema-filter" class="visually-hidden">Filter tables</label>
+          <input id="gql-schema-filter" type="search" placeholder="Filter tables" hidden>
+          <div id="gql-schema" class="schema-list"><p class="muted">Load the schema to browse tables and their fields.</p></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
