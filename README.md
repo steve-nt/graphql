@@ -47,6 +47,29 @@ The platform domain is set in `js/config.js`.
 - **UI:** light and dark theme (follows the system, with a toggle), responsive down to phone
   width, keyboard focus styles, skip link, ARIA labels, loading and error states, reduced motion.
 
+## Saved profile (snapshot)
+
+The page only works while your platform account can sign in. To keep it working afterwards:
+
+1. Sign in and click **Download data** (top right of the profile). Keep **Remove private
+   details** ticked for a file you will publish. It removes your email and other students'
+   logins. Untick it for a full private backup.
+2. Rename the file to `snapshot.json`, put it in a `data/` folder in the repository, and commit
+   and push it.
+3. From then on, visitors who are not signed in see the saved profile, marked **Saved <date>** in
+   the top bar. **Sign in** still opens the login page for live data.
+
+You can also view any snapshot file without publishing it: on the login page, click **Open a
+snapshot file**. The file is read in the browser and is not uploaded anywhere.
+
+## Remember me
+
+Ticking **Remember me on this device** at sign-in keeps your username or email in
+`localStorage`, so it is filled in next time. The password is never stored by the page. It is
+handed to the browser's password manager (directly in Chrome and Edge, and through the browser's
+own "save password" prompt elsewhere), which keeps it encrypted and fills it in again. Unticking
+the box at the next sign-in forgets the username.
+
 ## Which event is shown
 
 XP, level and projects are filtered to one event (cohort module). The page picks the event of
@@ -97,5 +120,7 @@ js/api.js          GraphQL request helper and all queries
 js/app.js          routing, data loading, profile rendering
 js/charts.js       SVG charts (line, bars, donut, radar)
 js/graphiql.js     built-in GraphiQL page
+js/snapshot.js     saving, loading and checking profile snapshots
+data/snapshot.json published snapshot (optional, add it yourself)
 js/format.js       number and date formatting
 ```

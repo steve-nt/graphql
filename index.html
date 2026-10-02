@@ -26,11 +26,13 @@
         <a href="#profile" class="tab" data-tab="profile">Profile</a>
         <a href="#graphiql" class="tab" data-tab="graphiql">GraphiQL</a>
       </nav>
+      <span id="snapshot-badge" class="snapshot-badge" hidden></span>
       <div class="topbar-actions">
         <button type="button" class="icon-button" id="theme-toggle" aria-label="Switch colour theme" title="Switch colour theme">
           <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
         </button>
         <button type="button" class="button ghost" id="logout-button">Log out</button>
+        <button type="button" class="button ghost" id="signin-button" hidden>Sign in</button>
       </div>
     </div>
   </header>
@@ -52,9 +54,21 @@
           <button type="button" class="link-button" id="toggle-password" aria-controls="password" aria-pressed="false">Show</button>
         </div>
 
+        <label class="checkbox">
+          <input id="remember" type="checkbox">
+          Remember me on this device
+        </label>
+
         <p id="login-error" class="form-error" role="alert" hidden></p>
 
         <button type="submit" class="button primary" id="login-button">Sign in</button>
+
+        <div class="snapshot-options">
+          <p class="divider"><span>or, without signing in</span></p>
+          <button type="button" class="button ghost" id="view-snapshot" hidden>View saved profile</button>
+          <label for="snapshot-file" class="button ghost file-button">Open a snapshot file</label>
+          <input id="snapshot-file" type="file" accept="application/json,.json" class="visually-hidden">
+        </div>
       </form>
     </section>
 
@@ -63,8 +77,16 @@
       <div id="profile-status" class="status" role="status"></div>
 
       <div id="profile-content" hidden>
-        <h1 id="profile-title" class="page-title">Hello, <span data-field="displayName"></span></h1>
-        <p class="muted page-subtitle"><span data-field="login"></span> · <span data-field="campus"></span></p>
+        <div class="page-head">
+          <div>
+            <h1 id="profile-title" class="page-title">Hello, <span data-field="displayName"></span></h1>
+            <p class="muted page-subtitle"><span data-field="login"></span> · <span data-field="campus"></span></p>
+          </div>
+          <button type="button" class="button ghost" id="download-button">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 19h14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download data
+          </button>
+        </div>
 
         <!-- Three main sections -->
         <div class="grid grid-3">
@@ -221,5 +243,22 @@
       </div>
     </section>
   </main>
+
+  <dialog id="download-dialog" class="card dialog" aria-labelledby="download-title">
+    <form method="dialog">
+      <h2 id="download-title">Download your data</h2>
+      <p class="muted">Saves everything on this page as one JSON file. The page can show it later
+        without signing in, even after your platform access ends.</p>
+      <label class="checkbox">
+        <input id="strip-private" type="checkbox" checked>
+        Remove private details (your email and other students' logins). Keep this on for a file
+        you will publish with the site.
+      </label>
+      <div class="dialog-actions">
+        <button type="submit" value="cancel" class="button ghost">Cancel</button>
+        <button type="submit" value="download" class="button primary">Download</button>
+      </div>
+    </form>
+  </dialog>
 </body>
 </html>

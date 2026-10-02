@@ -1,9 +1,10 @@
-import { login, logout, getToken, getUserIdFromToken } from "./auth.js";
+import { login, logout, getToken, getUserIdFromToken, getRememberedLogin, rememberLogin, forgetLogin, getSavedPassword } from "./auth.js";
 import { request, AuthError, USER_QUERY, LEVEL_QUERY, XP_QUERY, PROGRESS_QUERY, SKILLS_QUERY, AUDITS_QUERY } from "./api.js";
 import { renderXpTimeline, renderBarChart, renderDonut, renderRadar } from "./charts.js";
 import { formatBytes, formatDate, formatNumber, lastSegment } from "./format.js";
 import { initGraphiql } from "./graphiql.js";
 import { TOKEN_KEY } from "./config.js";
+import { buildSnapshot, downloadSnapshot, readSnapshotFile, loadPublishedSnapshot } from "./snapshot.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -13,16 +14,32 @@ const views = {
   graphiql: $("graphiql-view"),
 };
 
-let profileLoaded = false;
+// "live": signed in, data from the API. "snapshot": data from a saved file.
+let mode = null;
+// The mode the profile was last drawn for, so it is only redrawn when needed.
+let renderedMode = null;
+// Data behind the live profile, kept for "Download data".
+let liveData = null;
+// The snapshot published with the site (data/snapshot.json), if any.
+let publishedSnapshot = null;
+// The snapshot being shown: the published one or a file the user opened.
+let snapshot = null;
+// True after "Sign in" or "Log out", so the login page wins over a snapshot.
+let wantLogin = false;
 
 // ── Routing ───────────────────────────────────────────────────────────
 
 function route() {
-  const token = getToken();
-  if (!token) return showLogin();
+  if (getToken()) mode = "live";
+  else if (snapshot && !wantLogin) mode = "snapshot";
+  else {
+    mode = null;
+    return showLogin();
+  }
 
-  const page = location.hash === "#graphiql" ? "graphiql" : "profile";
+  const page = mode === "live" && location.hash === "#graphiql" ? "graphiql" : "profile";
   $("topbar").hidden = false;
+  updateTopbar();
   for (const [name, view] of Object.entries(views)) view.hidden = name !== page;
   for (const tab of document.querySelectorAll(".tab")) {
     if (tab.dataset.tab === page) tab.setAttribute("aria-current", "page");
@@ -30,8 +47,23 @@ function route() {
   }
   document.title = page === "graphiql" ? "GraphiQL · Zone01 Profile" : "Zone01 Profile";
 
-  if (page === "profile" && !profileLoaded) loadProfile();
+  if (page === "profile" && renderedMode !== mode) {
+    if (mode === "live") loadProfile();
+    else showSnapshot();
+  }
   if (page === "graphiql") initGraphiql({ onAuthError: handleAuthError });
+}
+
+function updateTopbar() {
+  const live = mode === "live";
+  // A snapshot has only the profile page, so the tabs are hidden.
+  document.querySelector(".tabs").hidden = !live;
+  $("logout-button").hidden = !live;
+  $("download-button").hidden = !live;
+  $("signin-button").hidden = live;
+  const badge = $("snapshot-badge");
+  badge.hidden = live;
+  badge.textContent = live ? "" : `Saved ${formatDate(snapshot.savedAt)}`;
 }
 
 function showLogin(message) {
@@ -39,7 +71,23 @@ function showLogin(message) {
   for (const [name, view] of Object.entries(views)) view.hidden = name !== "login";
   document.title = "Sign in · Zone01 Profile";
   setLoginError(message);
-  $("identifier").focus();
+  $("view-snapshot").hidden = !publishedSnapshot;
+  prefillLogin();
+}
+
+// Fill in the remembered username, and the password if the browser has it.
+async function prefillLogin() {
+  const remembered = getRememberedLogin();
+  $("remember").checked = Boolean(remembered);
+  if (remembered && !$("identifier").value) $("identifier").value = remembered;
+  if (remembered && !$("password").value) {
+    const saved = await getSavedPassword();
+    if (saved && !$("password").value && (saved.id === $("identifier").value || !$("identifier").value)) {
+      $("identifier").value = saved.id;
+      $("password").value = saved.password;
+    }
+  }
+  if (!views.login.hidden) ($("identifier").value ? $("password") : $("identifier")).focus();
 }
 
 function setLoginError(message) {
@@ -50,7 +98,10 @@ function setLoginError(message) {
 
 function handleAuthError(error) {
   logout();
-  profileLoaded = false;
+  liveData = null;
+  renderedMode = null;
+  wantLogin = true;
+  mode = null;
   showLogin(error?.message);
 }
 
@@ -67,8 +118,11 @@ $("login-form").addEventListener("submit", async (event) => {
   button.textContent = "Signing in…";
   try {
     await login(identifier, password);
+    // Not awaited: the browser may show its own "save password" prompt.
+    if ($("remember").checked) rememberLogin(identifier, password);
+    else forgetLogin();
     $("password").value = "";
-    profileLoaded = false;
+    wantLogin = false;
     if (location.hash === "#profile" || location.hash === "") route();
     else location.hash = "#profile";
   } catch (error) {
@@ -90,12 +144,57 @@ $("toggle-password").addEventListener("click", (event) => {
 
 $("logout-button").addEventListener("click", () => {
   logout();
-  profileLoaded = false;
+  liveData = null;
+  renderedMode = null;
+  wantLogin = true;
+  snapshot = publishedSnapshot;
   $("profile-content").hidden = true;
   $("identifier").value = "";
-  history.replaceState(null, "", location.pathname);
-  showLogin();
+  history.replaceState(null, "", location.pathname + location.search);
+  route();
 });
+
+// ── Snapshots ────────────────────────────────────────────────────────
+
+$("signin-button").addEventListener("click", () => {
+  wantLogin = true;
+  route();
+});
+
+$("view-snapshot").addEventListener("click", () => {
+  snapshot = publishedSnapshot;
+  wantLogin = false;
+  renderedMode = null;
+  route();
+});
+
+$("snapshot-file").addEventListener("change", async (event) => {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  try {
+    snapshot = await readSnapshotFile(file);
+    wantLogin = false;
+    renderedMode = null;
+    route();
+  } catch (error) {
+    setLoginError(error.message);
+  }
+});
+
+$("download-button").addEventListener("click", () => $("download-dialog").showModal());
+
+$("download-dialog").addEventListener("close", (event) => {
+  if (event.target.returnValue !== "download" || !liveData) return;
+  downloadSnapshot(buildSnapshot(liveData, { stripPrivate: $("strip-private").checked }));
+});
+
+function showSnapshot() {
+  renderedMode = "snapshot";
+  setStatus("");
+  $("profile-content").hidden = false;
+  renderProfile(snapshot);
+}
 
 // Log out in every open tab when one of them logs out.
 window.addEventListener("storage", (event) => {
@@ -161,7 +260,7 @@ function pickEvent(levels) {
 }
 
 async function loadProfile() {
-  profileLoaded = true;
+  renderedMode = "live";
   $("profile-content").hidden = true;
   setStatus("Loading your profile…");
 
@@ -189,12 +288,13 @@ async function loadProfile() {
     const failed = [xp, progress, skills, audits].filter((r) => r.status === "rejected");
     for (const f of failed) console.warn("Query failed:", f.reason);
 
+    liveData = { user, level, eventId, xp: value(xp), progress: value(progress), skills: value(skills), audits: value(audits) };
     $("profile-content").hidden = false;
-    renderProfile({ user, level, xp: value(xp), progress: value(progress), skills: value(skills), audits: value(audits) });
+    renderProfile(liveData);
     setStatus(failed.length ? "Some data could not be loaded, so parts of the page may be empty." : "", { error: failed.length > 0, retry: failed.length > 0 });
   } catch (error) {
     if (error instanceof AuthError) return handleAuthError(error);
-    profileLoaded = false;
+    renderedMode = null;
     setStatus(error.message || "Something went wrong while loading your profile.", { error: true, retry: true });
   }
 }
@@ -314,7 +414,11 @@ function renderRecentProjects(progress) {
 function renderRecentAudits(audits) {
   const list = $("recent-audits");
   list.replaceChildren(...audits.slice(0, 6).map((a) =>
-    listItem(lastSegment(a.group?.path), `Group of ${a.group?.captainLogin ?? "unknown"} · ${formatDate(a.createdAt)}`, a.grade >= 1)));
+    listItem(
+      lastSegment(a.group?.path),
+      `${a.group?.captainLogin ? `Group of ${a.group.captainLogin}` : "Group audit"} · ${formatDate(a.createdAt)}`,
+      a.grade >= 1,
+    )));
   if (!audits.length) list.append(emptyItem("No audits yet."));
 }
 
@@ -360,4 +464,13 @@ function renderTable(container, headers, rows) {
 // ── Start ────────────────────────────────────────────────────────────
 
 window.addEventListener("hashchange", route);
-route();
+
+// Signed in: start at once and look for a published snapshot on the side.
+// Not signed in: wait for it, so a saved profile shows instead of the login page.
+const published = loadPublishedSnapshot().then((value) => {
+  publishedSnapshot = value;
+  snapshot ??= value;
+  $("view-snapshot").hidden = !value;
+});
+if (getToken()) route();
+else published.then(route);

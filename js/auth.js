@@ -81,3 +81,56 @@ export function getUserIdFromToken(token) {
   const n = Number(id);
   return Number.isFinite(n) ? n : null;
 }
+
+// ── Remember me ───────────────────────────────────────────────────────
+// The username or email is kept in localStorage. The password is never stored
+// by this page: it is handed to the browser's password manager, which keeps
+// it encrypted and offers it again next time.
+
+const REMEMBER_KEY = "zone01_remember_login";
+
+export function getRememberedLogin() {
+  try {
+    return localStorage.getItem(REMEMBER_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export async function rememberLogin(identifier, password) {
+  try {
+    localStorage.setItem(REMEMBER_KEY, identifier.trim());
+  } catch {
+    // Storage blocked; nothing to remember.
+  }
+  // Chrome and Edge: save to the password manager directly. Other browsers
+  // offer to save it themselves because of the form's autocomplete attributes.
+  if ("PasswordCredential" in window && navigator.credentials) {
+    try {
+      await navigator.credentials.store(new window.PasswordCredential({ id: identifier.trim(), password }));
+    } catch {
+      // The user declined, or the browser does not allow it here.
+    }
+  }
+}
+
+export function forgetLogin() {
+  try {
+    localStorage.removeItem(REMEMBER_KEY);
+  } catch {
+    // Nothing stored.
+  }
+}
+
+// A password saved in the browser for this site, without prompting.
+// Only Chrome and Edge support this; elsewhere the browser's autofill fills
+// the field instead.
+export async function getSavedPassword() {
+  if (!("PasswordCredential" in window) || !navigator.credentials) return null;
+  try {
+    const credential = await navigator.credentials.get({ password: true, mediation: "silent" });
+    return credential?.type === "password" ? credential : null;
+  } catch {
+    return null;
+  }
+}
