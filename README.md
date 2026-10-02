@@ -3,6 +3,8 @@
 A profile page for Zone01 Athens students. You sign in with your platform account, and the page
 loads your data from the platform GraphQL API and draws statistics as hand-made SVG charts.
 
+**Live site: <https://steve-nt.github.io/graphql/>**
+
 Plain HTML, CSS and JavaScript modules. No build step and no dependencies.
 
 ## Run locally
@@ -19,8 +21,10 @@ python3 -m http.server 8000
 The site is static, so any static host works. Publish the repository root (`index.html`, `css/`,
 `js/`).
 
-- **GitHub Pages:** push the repository to GitHub, then go to Settings → Pages → Deploy from a
-  branch → `main` / root.
+- **GitHub Pages** (used for the live site): the site is published from the `main` branch of
+  <https://github.com/steve-nt/graphql>, repository root, at <https://steve-nt.github.io/graphql/>.
+  To set it up elsewhere, push to GitHub, then go to Settings → Pages → Deploy from a branch →
+  `main` / root.
 - **Netlify:** drag the project folder onto <https://app.netlify.com/drop>, or connect the
   repository with no build command and publish directory `.`.
 
